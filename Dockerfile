@@ -1,13 +1,14 @@
-FROM python:2-alpine
+FROM          ubuntu:16.04
 
-WORKDIR /usr/src/app
+RUN           apt-get -y update \
+              && apt-get -y install curl python-dateutil python-requests python-simplejson python-yaml python-prometheus-client\
+              && apt-get clean \
+              && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
+RUN           mkdir /usr/local/bin/exporter
+COPY          exporter /usr/local/bin/exporter
+RUN           chmod +x /usr/local/bin/exporter/main.py
 
 EXPOSE        9103
 
-CMD [ "python", "./exporter/main.py" ]
+CMD           ["/usr/local/bin/exporter/main.py"]

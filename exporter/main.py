@@ -98,14 +98,11 @@ if __name__ == '__main__':
         config = yaml.safe_load(args.config_file.read())
 
     os_keystone_url = config.get('OS_AUTH_URL', os.getenv('OS_AUTH_URL'))
-    os_password = config.get('OS_PASSWORD', os.getenv('OS_PASSWORD'))
-    os_tenant_name = config.get(
-        'OS_PROJECT_NAME',
-        os.getenv('OS_PROJECT_NAME'))
-    os_username = config.get('OS_USERNAME', os.getenv('OS_USERNAME'))
-    os_user_domain = config.get(
-        'OS_USER_DOMAIN_NAME',
-        os.getenv('OS_USER_DOMAIN_NAME'))
+    os_application_credential_id = config.get('OS_APPLICATION_CREDENTIAL_ID', os.getenv('OS_APPLICATION_CREDENTIAL_ID'))
+    os_application_credential_secret = config.get(
+        'OS_APPLICATION_CREDENTIAL_SECRET',
+        os.getenv('OS_APPLICATION_CREDENTIAL_SECRET'))
+    os_interface = config.get('OS_INTERFACE', os.getenv('OS_INTERFACE', 'public'))
     os_region = config.get('OS_REGION_NAME', os.getenv('OS_REGION_NAME'))
     os_timeout = config.get(
         'TIMEOUT_SECONDS', int(
@@ -127,10 +124,9 @@ if __name__ == '__main__':
 
     osclient = OSClient(
         os_keystone_url,
-        os_password,
-        os_tenant_name,
-        os_username,
-        os_user_domain,
+        os_application_credential_id,
+        os_application_credential_secret,
+        os_interface,
         os_region,
         os_timeout,
         os_retries)

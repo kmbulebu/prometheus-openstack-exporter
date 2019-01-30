@@ -40,18 +40,15 @@ class OSClient(object):
     def __init__(
             self,
             keystone_url,
-            password,
-            tenant_name,
-            username,
-            user_domain,
+            application_credential_id,
+            application_credential_secret,
+            interface,
             region,
             timeout,
             retries):
         self.keystone_url = keystone_url
-        self.password = password
-        self.tenant_name = tenant_name
-        self.username = username
-        self.user_domain = user_domain
+        self.application_credential_id = application_credential_id
+        self.application_credential_secret = application_credential_secret
         self.region = region
         self.timeout = timeout
         self.retries = retries
@@ -63,6 +60,8 @@ class OSClient(object):
         self.session.mount(
             'https://', requests.adapters.HTTPAdapter(max_retries=retries))
         self._service_catalog = []
+        # Default to public interface.
+        self._interface_internal = (interface.lower() == 'internal')
 
     def is_valid_token(self):
         now = datetime.datetime.now(tz=dateutil.tz.tzutc())
@@ -77,19 +76,10 @@ class OSClient(object):
         data = json.dumps({
             "auth": {
                 "identity": {
-                    "methods": ["password"],
-                    "password": {
-                        "user": {
-                            "name": self.username,
-                            "domain": {"id": self.user_domain},
-                            "password": self.password
-                        }
-                    }
-                },
-                "scope": {
-                    "project": {
-                        "name": self.tenant_name,
-                        "domain": {"id": self.user_domain}
+                    "methods": ["application_credential"],
+                    "application_credential": {
+                       "id": self.application_credential_id,
+                       "secret": self.application_credential_secret
                     }
                 }
             }
@@ -116,19 +106,20 @@ class OSClient(object):
             data['token']['expires_at']) - self.EXPIRATION_TOKEN_DELTA
         self._service_catalog = []
         for item in data['token']['catalog']:
-            internalURL = None
-            publicURL = None
+            url = None
             adminURL = None
             for endpoint in item['endpoints']:
                 if endpoint['region'] == self.region or self.region is None:
-                    if endpoint['interface'] == 'internal':
-                        internalURL = endpoint['url']
-                    elif endpoint['interface'] == 'public':
-                        publicURL = endpoint['url']
+                    if self._interface_internal and endpoint['interface'] == 'internal':
+                        url = endpoint['url']
+                        logger.error("Using internal URL for Service '{}'".format(item['name']))
+                    elif not self._interface_internal and endpoint['interface'] == 'public':
+                        url = endpoint['url']
+                        logger.error("Using public URL for Service '{}'".format(item['name']))
                     elif endpoint['interface'] == 'admin':
                         adminURL = endpoint['url']
 
-            if internalURL is None and publicURL is None:
+            if url is None:
                 logger.warning(
                     "Service '{}' skipped because no URL can be found".format(
                         item['name']))
@@ -137,7 +128,7 @@ class OSClient(object):
                 'name': item['name'],
                 'region': self.region,
                 'service_type': item['type'],
-                'url': internalURL if internalURL is not None else publicURL,
+                'url': url,
                 'admin_url': adminURL,
             })
 
